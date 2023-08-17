@@ -179,7 +179,8 @@ async function createTreeCodeFromPath(
   const splittedPath = pagePath.split(/[\\/]/)
   const appDirPrefix = splittedPath[0]
   const pages: string[] = []
-  const isNotFoundRoute = page === '/_not-found'
+  const isNotFoundRoute = page === '/_not-found' || page === '/not-found'
+  console.log('appDirPrefix', appDirPrefix)
 
   let rootLayout: string | undefined
   let globalError: string | undefined
@@ -390,7 +391,8 @@ async function createTreeCodeFromPath(
           adjacentParallelSegment === 'children' ? '' : adjacentParallelSegment
         const defaultPath =
           (await resolver(
-            `${appDirPrefix}${segmentPath}/${actualSegment}/default`
+            path.join(`${appDirPrefix}${segmentPath}`, actualSegment, 'default')
+            // `${appDirPrefix}${segmentPath}/${actualSegment}/default`
           )) ?? 'next/dist/client/components/parallel-route-default'
 
         props[normalizeParallelKey(adjacentParallelSegment)] = `[
@@ -432,6 +434,10 @@ function createAbsolutePath(appDir: string, pathToTurnAbsolute: string) {
   )
 }
 
+const defaultNotFoundAbsolutePath = require.resolve(
+  'next/dist/client/components/not-found-error'
+)
+
 const nextAppLoader: AppLoader = async function nextAppLoader() {
   const loaderOptions = this.getOptions()
   const {
@@ -449,6 +455,7 @@ const nextAppLoader: AppLoader = async function nextAppLoader() {
     middlewareConfig: middlewareConfigBase64,
   } = loaderOptions
 
+  console.log('nextAppLoader', appPaths, pagePath)
   const buildInfo = getModuleBuildInfo((this as any)._module)
   const page = name.replace(/^app/, '')
   const middlewareConfig: MiddlewareConfig = JSON.parse(
@@ -456,7 +463,10 @@ const nextAppLoader: AppLoader = async function nextAppLoader() {
   )
   buildInfo.route = {
     page,
-    absolutePagePath: createAbsolutePath(appDir, pagePath),
+    absolutePagePath:
+      pagePath === defaultNotFoundAbsolutePath
+        ? defaultNotFoundAbsolutePath
+        : createAbsolutePath(appDir, pagePath),
     preferredRegion,
     middlewareConfig,
   }
@@ -626,7 +636,7 @@ const nextAppLoader: AppLoader = async function nextAppLoader() {
         )} doesn't have a root layout. To fix this error, make sure every page has a root layout.`
       )
       process.exit(1)
-    } else {
+    } else if (pagePath.startsWith(appDir)) {
       // In dev we'll try to create a root layout
       const [createdRootLayout, rootLayoutPath] = await verifyRootLayout({
         appDir: appDir,
@@ -635,6 +645,7 @@ const nextAppLoader: AppLoader = async function nextAppLoader() {
         pagePath,
         pageExtensions,
       })
+      console.log('verifyRootLayout:pagePath', pagePath, appDir)
       if (!createdRootLayout) {
         let message = `${chalk.bold(
           pagePath.replace(`${APP_DIR_ALIAS}/`, '')
@@ -649,7 +660,7 @@ const nextAppLoader: AppLoader = async function nextAppLoader() {
             'To fix this error, make sure every page has a root layout.'
         }
 
-        throw new Error(message)
+        // throw new Error(message)
       }
 
       // Clear fs cache, get the new result with the created root layout.
