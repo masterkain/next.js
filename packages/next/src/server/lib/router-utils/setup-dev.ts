@@ -809,7 +809,7 @@ async function startWatcher(opts: SetupOpts) {
       let envChange = false
       let tsconfigChange = false
       let conflictingPageChange = 0
-      let hasRootAppNotFound = false
+      let hasRootAppNotFound = true
 
       const { appFiles, pageFiles } = opts.fsChecker
 
@@ -945,11 +945,7 @@ async function startWatcher(opts: SetupOpts) {
         if (isAppPath) {
           const isRootNotFound = validFileMatcher.isRootNotFound(fileName)
 
-          if (isRootNotFound) {
-            hasRootAppNotFound = true
-            continue
-          }
-          if (!isRootNotFound && !validFileMatcher.isAppRouterPage(fileName)) {
+          if (isRootNotFound || !validFileMatcher.isAppRouterPage(fileName)) {
             continue
           }
           // Ignore files/directories starting with `_` in the app directory
