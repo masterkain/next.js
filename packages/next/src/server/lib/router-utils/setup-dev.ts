@@ -727,6 +727,7 @@ async function startWatcher(opts: SetupOpts) {
           matchers?: MiddlewareMatcher[]
         }
       | undefined
+    hasAppNotFound?: boolean
     interceptionRoutes?: ReturnType<
       typeof import('./filesystem').buildCustomRoute
     >[]
@@ -808,6 +809,7 @@ async function startWatcher(opts: SetupOpts) {
       let envChange = false
       let tsconfigChange = false
       let conflictingPageChange = 0
+      let hasRootAppNotFound = false
 
       const { appFiles, pageFiles } = opts.fsChecker
 
@@ -943,7 +945,11 @@ async function startWatcher(opts: SetupOpts) {
         if (isAppPath) {
           const isRootNotFound = validFileMatcher.isRootNotFound(fileName)
 
-          if (isRootNotFound || !validFileMatcher.isAppRouterPage(fileName)) {
+          if (isRootNotFound) {
+            hasRootAppNotFound = true
+            continue
+          }
+          if (!isRootNotFound && !validFileMatcher.isAppRouterPage(fileName)) {
             continue
           }
           // Ignore files/directories starting with `_` in the app directory
@@ -1174,6 +1180,7 @@ async function startWatcher(opts: SetupOpts) {
         : undefined
 
       await propagateToWorkers('middleware', serverFields.middleware)
+      serverFields.hasAppNotFound = hasRootAppNotFound
 
       opts.fsChecker.middlewareMatcher = serverFields.middleware?.matchers
         ? getMiddlewareRouteMatcher(serverFields.middleware?.matchers)
